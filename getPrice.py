@@ -26,20 +26,30 @@ now = datetime.utcnow()
 current_time = int(now.timestamp()) * 1000
 previous_time = int((now - timedelta(hours=1000)).timestamp()) * 1000
 
-# fetch 1 hour klines for Bitcoin data
-data = client.get_historical_klines(
-    "BTCUSDT", Client.KLINE_INTERVAL_1HOUR, previous_time, current_time)
+for i in range(2):
+    print(i)
+    # fetch 1 hour klines for Bitcoin data
+    data = client.get_historical_klines(
+        "BTCUSDT", Client.KLINE_INTERVAL_1HOUR, str(previous_time), str(current_time))
 
-# Create a dataframe from the data
-df = pd.DataFrame(data, columns=["Open time", "Open", "High", "Low", "Close", "Volume", "Close time",
-                                 "Quote asset volume", "Number of trades", "Taker buy base asset volume", "Taker buy quote asset volume", "Ignore"])
+    # Create a dataframe from the data
+    df = pd.DataFrame(data, columns=["Open time", "Open", "High", "Low", "Close", "Volume", "Close time",
+                                     "Quote asset volume", "Number of trades", "Taker buy base asset volume", "Taker buy quote asset volume", "Ignore"])
 
-# Set the "Close time" column as the index
-df.set_index("Close time", inplace=True)
+    # Set the "Close time" column as the index
+    df.set_index("Close time", inplace=True)
 
-# Remove all other columns except Close price
-df = df.drop(
-    df.columns.difference(['Close']), axis=1)
+    # Remove all other columns except Close price
+    df = df.drop(
+        df.columns.difference(['Close']), axis=1)
 
-# Display the dataframe
-print(df)
+    # Rename the index and column
+    df = df.rename(columns={'Close': 'close_price'})
+    df = df.rename_axis('time')
+
+    # Display the dataframe
+    print(df.head())
+
+    # Change the timestamps for next loop
+    current_time = current_time - 3.6e9  # minus 1000 hours in milliseconds
+    previous_time = previous_time - 3.6e9
