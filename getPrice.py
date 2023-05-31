@@ -3,6 +3,8 @@ import pandas as pd
 from dotenv import load_dotenv
 from binance import Client
 from datetime import datetime, timedelta
+#pd.set_option('display.max_rows', None)
+
 
 # Load environment variables from the .env file
 load_dotenv()
@@ -26,8 +28,16 @@ now = datetime.utcnow()
 current_time = int(now.timestamp()) * 1000
 previous_time = int((now - timedelta(hours=1000)).timestamp()) * 1000
 
-for i in range(2):
-    print(i)
+# Make the dataframe
+dfAll = pd.DataFrame()
+
+# Setup loop variables
+lenDF = 1000
+i = 0
+
+while lenDF > 990:
+
+    print("Iteration number", i)
     # fetch 1 hour klines for Bitcoin data
     data = client.get_historical_klines(
         "BTCUSDT", Client.KLINE_INTERVAL_1HOUR, str(previous_time), str(current_time))
@@ -47,9 +57,16 @@ for i in range(2):
     df = df.rename(columns={'Close': 'close_price'})
     df = df.rename_axis('time')
 
-    # Display the dataframe
-    print(df.head())
-
     # Change the timestamps for next loop
     current_time = current_time - 3.6e9  # minus 1000 hours in milliseconds
     previous_time = previous_time - 3.6e9
+
+    # Merge into the dataframe
+    dfAll = pd.concat([df, dfAll])
+
+    # Loop variables set
+    lenDF = len(df)
+    i += 1
+
+dfAll.to_pickle("bitcoin_price.pkl")
+print(dfAll)
