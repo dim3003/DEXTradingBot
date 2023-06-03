@@ -1,7 +1,8 @@
 # Polygon DEX Trading Bot
 
 The Polygon DEX Trading Bot is a comprehensive tool designed for executing efficient trading strategies on the Polygon network. The aim of this project is to streamline the trading process, enhance the profitability of trades, and provide users with an in-depth analysis of different strategies.
-Overview
+
+## Overview
 
 This project consists of three main modules:
 
