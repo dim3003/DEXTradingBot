@@ -3,14 +3,14 @@ import pandas as pd
 from dotenv import load_dotenv
 from binance import Client
 from datetime import datetime, timedelta
-#pd.set_option('display.max_rows', None)
+# pd.set_option('display.max_rows', None)
 
 # Load environment variables from the .env file
 load_dotenv()
 
 # Retrieve the values of api_key_binance and api_secret_binance
-api_key = os.getenv('api_key_binance')
-api_secret = os.getenv('api_secret_binance')
+API_KEY = os.getenv('API_KEY_BINANCE')
+API_SECRET = os.getenv('API_SECRET_BINANCE')
 
 
 class DataFetcher():
@@ -41,41 +41,45 @@ class DataFetcher():
         current_time = self.stop_time
         previous_time = int(
             (current_time - timedelta(hours=1000)).timestamp()) * 1000
-        df_merge = pd.DataFrame()
-        len_df = 1000
-        i = 0
+        merged_df = pd.DataFrame()
+        row_len = 1000
+        iteration_count = 0
 
-        while len_df > 990:
-            print("Iteration number", i)
+        while row_len > 990:
+            print("Iteration count: ", iteration_count)
 
             # fetch 1 hour klines for Bitcoin data
             data = client.get_historical_klines(
                 self.symbol, Client.KLINE_INTERVAL_1HOUR, str(previous_time), str(current_time))
 
             # Create a dataframe from the data
-            df = pd.DataFrame(data, columns=["Open time", "Open", "High", "Low", "Close", "Volume", "Close time",
-                                             "Quote asset volume", "Number of trades", "Taker buy base asset volume", "Taker buy quote asset volume", "Ignore"])
-
-            # Set the "Close time" column as the index
-            df.set_index("Close time", inplace=True)
-
-            # Remove all other columns except Close price
-            df = df.drop(
-                df.columns.difference(['Close']), axis=1)
-
-            # Rename the index and column
-            df = df.rename(columns={'Close': 'close_price'})
-            df = df.rename_axis('time')
+            df = self._create_dataframe_from_data(data)
 
             # Change the timestamps for next loop
-            current_time = current_time - 3.6e9  # minus 1000 hours in milliseconds
-            previous_time = previous_time - 3.6e9
+            current_time -= self._get_milliseconds(1000)
+            previous_time -= self._get_milliseconds(1000)
 
             # Merge into the dataframe
-            df_merge = pd.concat([df, df_merge])
+            merged_df = pd.concat([df, merged_df])
 
             # Loop variables set
-            len_df = len(df)
-            i += 1
-        df_merge.to_pickle(f"data/{self.symbol}.pkl")
-        print(df_merge)
+            row_len = len(df)
+            iteration_count += 1
+        merged_df.to_pickle(f"data/{self.symbol}.pkl")
+        print(merged_df)
+
+    @staticmethod
+    def _create_dataframe_from_data(data):
+        df = pd.DataFrame(data, columns=["Open time", "Open", "High", "Low", "Close", "Volume", "Close time",
+                                         "Quote asset volume", "Number of trades", "Taker buy base asset volume", "Taker buy quote asset volume", "Ignore"])
+
+        df.set_index("Close time", inplace=True)
+
+        df = df[['Close']].rename(
+            columns={'Close': 'close_price'}).rename_axis('time')
+
+        return df
+
+    @staticmethod
+    def _get_milliseconds(hours):
+        return hours * 60 * 60 * 1000
