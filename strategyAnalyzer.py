@@ -56,21 +56,21 @@ class TradingStrategy:
             # Update the previous order for next iteration
             self.previous_order = self.df.at[i, strategy_signal]
 
-        def print_stats(self):
-            # Calculate final portfolio value
-            final_portfolio_value = self.df['Portfolio Value'].dropna(
-            ).iloc[-1]
-            profit = final_portfolio_value - initial_cash
+    def print_stats(self, strategy_signal):
+        # Calculate final portfolio value
+        final_portfolio_value = self.df['portfolio_value'].dropna(
+        ).iloc[-1]
+        profit = final_portfolio_value - self.initial_cash
 
-            # Count the number of trades made
-            n_trades = self.df['Order'].count()
+        # Count the number of trades made
+        n_trades = (self.df[strategy_signal] != 0).sum()
 
-            # Calculate stats
-            print(self.df)
-            print(f'Initial portfolio value: ${initial_cash:.2f}')
-            print(f'Final portfolio value: ${final_portfolio_value:.2f}')
-            print(f'Profit: ${profit:.2f}')
-            print(f'Number of trades made: {n_trades}')
+        # Calculate stats
+        print(self.df)
+        print(f'Initial portfolio value: ${self.initial_cash:.2f}')
+        print(f'Final portfolio value: ${final_portfolio_value:.2f}')
+        print(f'Profit: ${profit:.2f}')
+        print(f'Number of trades made: {n_trades}')
 
 
 if __name__ == "__main__":
