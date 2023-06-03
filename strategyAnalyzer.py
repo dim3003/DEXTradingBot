@@ -26,51 +26,53 @@ class TradingStrategy:
         self.df.loc[(
             self.df[f'RSI_{lower_band}_{upper_band}_{lag}'] > 70), f'signal_RSI_{lower_band}_{upper_band}_{lag}'] = 1
 
-    def calculate_portfolio_value(self, strategy):
-        print("yes")
+    def calculate_portfolio_value(self, strategy_signal):
+
+        # Go through each day
+        for i in self.df.index:
+            # At each 'Buy' signal, buy as much as you can
+            if self.df.at[i, strategy_signal] == 1 and self.previous_order != 1 and self.previous_holdings == 0:
+                self.df.at[i, 'holdings'] = self.cash / \
+                    self.df.at[i, 'close_price']
+                self.cash = 0  # use all cash to buy
+
+            # At each 'Sell' signal, sell everything
+            elif self.df.at[i, strategy_signal] == -1:
+                self.cash += self.previous_holdings * \
+                    self.df.at[i, 'close_price']
+                self.df.at[i, 'holdings'] = 0
+
+            # If there's no signal, holdings are the same as yesterday
+            else:
+                self.df.at[i, 'holdings'] = self.previous_holdings
+
+            # Calculate portfolio value (cash + holdings * price)
+            self.df.at[i, 'portfolio_value'] = self.cash + \
+                self.df.at[i, 'holdings'] * self.df.at[i, 'close_price']
+
+            # Update the previous_holdings
+            self.previous_holdings = self.df.at[i, 'holdings']
+
+            # Update the previous order for next iteration
+            self.previous_order = self.df.at[i, strategy_signal]
+
+        def print_stats(self):
+            # Calculate final portfolio value
+            final_portfolio_value = self.df['Portfolio Value'].dropna(
+            ).iloc[-1]
+            profit = final_portfolio_value - initial_cash
+
+            # Count the number of trades made
+            n_trades = self.df['Order'].count()
+
+            # Calculate stats
+            print(self.df)
+            print(f'Initial portfolio value: ${initial_cash:.2f}')
+            print(f'Final portfolio value: ${final_portfolio_value:.2f}')
+            print(f'Profit: ${profit:.2f}')
+            print(f'Number of trades made: {n_trades}')
 
 
-# --------------- OLD CODE --------------------
-# Get the data
-dfAll = pd.read_pickle("MATICUSDT.pkl")
-
-
-# Go through each day
-for i in dfAll.index:
-    # At each 'Buy' signal, buy as much as you can
-    if dfAll.at[i, 'Order'] == 'Buy' and previous_order != 'Buy' and previous_holdings == 0:
-        dfAll.at[i, 'Holdings'] = cash / dfAll.at[i, 'close_price']
-        cash = 0  # use all cash to buy
-
-    # At each 'Sell' signal, sell everything
-    elif dfAll.at[i, 'Order'] == 'Sell':
-        cash += previous_holdings * dfAll.at[i, 'close_price']
-        dfAll.at[i, 'Holdings'] = 0
-
-    # If there's no signal, holdings are the same as yesterday
-    else:
-        dfAll.at[i, 'Holdings'] = previous_holdings
-
-    # Calculate portfolio value (cash + holdings * price)
-    dfAll.at[i, 'Portfolio Value'] = cash + \
-        dfAll.at[i, 'Holdings'] * dfAll.at[i, 'close_price']
-
-    # Update the previous_holdings
-    previous_holdings = dfAll.at[i, 'Holdings']
-
-    # Update the previous order for next iteration
-    previous_order = dfAll.at[i, 'Order']
-
-# Calculate final portfolio value
-final_portfolio_value = dfAll['Portfolio Value'].dropna().iloc[-1]
-profit = final_portfolio_value - initial_cash
-
-# Count the number of trades made
-n_trades = dfAll['Order'].count()
-
-# Calculate stats
-print(dfAll)
-print(f'Initial portfolio value: ${initial_cash:.2f}')
-print(f'Final portfolio value: ${final_portfolio_value:.2f}')
-print(f'Profit: ${profit:.2f}')
-print(f'Number of trades made: {n_trades}')
+if __name__ == "__main__":
+    # Get the data
+    dfPrice = pd.read_pickle("MATICUSDT.pkl")
