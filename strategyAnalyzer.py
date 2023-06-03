@@ -3,31 +3,37 @@ import numpy as np
 import pandas as pd
 #pd.set_option('display.max_rows', 500)
 
+
+class TradingStrategy:
+    def __init__(self, df, initial_cash=10000):
+        self.df = pd.to_numeric(df['close_price']).copy()
+        self.initial_cash = initial_cash
+        self.cash = initial_cash
+        self.previous_holdings = 0.0
+        self.previous_order = None
+        self.df['holdings'] = 0.0
+        self.df['portfolio_value'] = 0.0
+
+    def calculate_RSI(self, lower_band=30, upper_band=70, lag=0):
+        # Calculate RSI
+        self.df[f'RSI_{lower_band}_{upper_band}_{lag}'] = ta.momentum.rsi(
+            self.df['close_price'], window=lag)
+        # Create empty "signals" column
+        self.df[f'signal_RSI_{lower_band}_{upper_band}_{lag}'] = 0
+        # Generate trading signals based on RSI
+        self.df.loc[(
+            self.df[f'RSI_{lower_band}_{upper_band}_{lag}'] < 30), f'signal_RSI_{lower_band}_{upper_band}_{lag}'] = -1
+        self.df.loc[(
+            self.df[f'RSI_{lower_band}_{upper_band}_{lag}'] > 70), f'signal_RSI_{lower_band}_{upper_band}_{lag}'] = 1
+
+    def calculate_portfolio_value(self, strategy):
+        print("yes")
+
+
+# --------------- OLD CODE --------------------
 # Get the data
-dfAll = pd.read_pickle("bitcoin_price.pkl")
+dfAll = pd.read_pickle("MATICUSDT.pkl")
 
-# Ensure the 'close_price' column is numeric for calculations
-dfAll['close_price'] = pd.to_numeric(dfAll['close_price'])
-
-# Calculate RSI
-dfAll['RSI'] = ta.momentum.rsi(dfAll['close_price'])
-
-# Create empty "signals" column
-dfAll['Signal'] = np.nan
-
-# Generate trading signals based on RSI
-dfAll.loc[(dfAll['RSI'] < 30), 'Signal'] = 'Sell'
-dfAll.loc[(dfAll['RSI'] > 70), 'Signal'] = 'Buy'
-
-# Generate trading orders based on signals
-dfAll['Order'] = dfAll['Signal'].shift()
-
-# Initialize portfolio and holdings
-dfAll['Holdings'] = 0.0
-dfAll['Portfolio Value'] = 0.0
-initial_cash = cash = 10000  # starting with $10,000
-previous_holdings = 0.0
-previous_order = None
 
 # Go through each day
 for i in dfAll.index:
