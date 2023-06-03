@@ -3,22 +3,50 @@ import pandas as pd
 from dotenv import load_dotenv
 from binance import Client
 from datetime import datetime, timedelta
-# pd.set_option('display.max_rows', None)
 
 # Load environment variables from the .env file
 load_dotenv()
 
-# Retrieve the values of api_key_binance and api_secret_binance
+# Retrieve the API key and secret from the environment variables
 API_KEY = os.getenv('API_KEY_BINANCE')
 API_SECRET = os.getenv('API_SECRET_BINANCE')
 
 
 class DataFetcher():
+    """
+    A class used to fetch data from Binance.
+
+    Attributes
+    ----------
+    client : binance.Client
+        The Binance client used to fetch data.
+    search_available_symbols : list
+        A list to store the available symbols from Binance.
+    start_time : int
+        The start timestamp (in ms) for fetching data.
+    stop_time : int
+        The stop timestamp (in ms) for fetching data.
+    symbol : str
+        The symbol for which to fetch data.
+    """
+
     def __init__(self, binance_api_key, binance_api_secret, start_time, stop_time=datetime.utcnow(), symbol="BTCUSDT"):
         """
-        Initialize the data fetcher
+        Constructs all the necessary attributes for the data fetcher object.
+
+        Parameters
+        ----------
+        binance_api_key : str
+            The Binance API key.
+        binance_api_secret : str
+            The Binance API secret.
+        start_time : datetime.datetime
+            The start datetime for fetching data.
+        stop_time : datetime.datetime, optional
+            The stop datetime for fetching data (default is current UTC time).
+        symbol : str, optional
+            The symbol for which to fetch data (default is "BTCUSDT").
         """
-        # Load binance client
         self.client = Client(binance_api_key, binance_api_secret)
         self.search_available_symbols = []
         self.start_time = int(start_time.timestamp()) * 1000
@@ -27,54 +55,79 @@ class DataFetcher():
 
     def list_available_symbols(self, search_term):
         """
-        # Look for available symbols in binance and stores them in the class
+        Fetches and stores the available symbols from Binance that contain the given search term.
+
+        Parameters
+        ----------
+        search_term : str
+            The search term to use when looking for symbols.
         """
         data = self.client.get_all_tickers()
-        self.search_available_symbols = [d['symbol']
-                                         for d in data if search_term in d['symbol'].lower()]
+        self.search_available_symbols = [
+            d['symbol'] for d in data if search_term in d['symbol'].lower()]
 
     def fetch_price(self, symbol):
         """
-        fetches the price of the selected cryptocurrency pair on binance
+        Fetches the price data for the given symbol.
+
+        The method fetches 1 hour klines (OHLCV) data, creates a DataFrame with this data, processes it and stores it as a pickle file. 
+        The process is repeated in a loop until the number of rows in the fetched data falls below 990.
+
+        Parameters
+        ----------
+        symbol : str
+            The symbol for which to fetch price data.
         """
-        # Loop setup for data fetching (cap at 1000 rows)
         current_time = self.stop_time
-        previous_time = int(
-            (current_time - timedelta(hours=1000)).timestamp()) * 1000
+        previous_time = self._get_previous_time(current_time)
+
         merged_df = pd.DataFrame()
-        row_len = 1000
+        row_len = 1000  # initial row length
         iteration_count = 0
 
         while row_len > 990:
-            print("Iteration count: ", iteration_count)
+            print(f"Iteration count: {iteration_count}")
 
-            # fetch 1 hour klines for Bitcoin data
-            data = client.get_historical_klines(
+            data = self.client.get_historical_klines(
                 self.symbol, Client.KLINE_INTERVAL_1HOUR, str(previous_time), str(current_time))
 
-            # Create a dataframe from the data
             df = self._create_dataframe_from_data(data)
 
-            # Change the timestamps for next loop
+            # Adjust the timestamps for the next loop iteration
             current_time -= self._get_milliseconds(1000)
             previous_time -= self._get_milliseconds(1000)
 
-            # Merge into the dataframe
+            # Merge the new DataFrame with the main one
             merged_df = pd.concat([df, merged_df])
 
-            # Loop variables set
+            # Update loop variables
             row_len = len(df)
             iteration_count += 1
+
+        # Store the final DataFrame as a pickle file
         merged_df.to_pickle(f"data/{self.symbol}.pkl")
+
         print(merged_df)
 
     @staticmethod
     def _create_dataframe_from_data(data):
+        """
+        Creates a DataFrame from the given data, keeps only the 'Close' price column and renames it to 'close_price'.
+
+        Parameters
+        ----------
+        data : list
+            The data from which to create a DataFrame.
+
+        Returns
+        -------
+        pandas.DataFrame
+            The created DataFrame.
+        """
         df = pd.DataFrame(data, columns=["Open time", "Open", "High", "Low", "Close", "Volume", "Close time",
                                          "Quote asset volume", "Number of trades", "Taker buy base asset volume", "Taker buy quote asset volume", "Ignore"])
 
         df.set_index("Close time", inplace=True)
-
         df = df[['Close']].rename(
             columns={'Close': 'close_price'}).rename_axis('time')
 
@@ -82,4 +135,34 @@ class DataFetcher():
 
     @staticmethod
     def _get_milliseconds(hours):
+        """
+        Converts the given hours to milliseconds.
+
+        Parameters
+        ----------
+        hours : int or float
+            The hours to convert to milliseconds.
+
+        Returns
+        -------
+        int
+            The converted milliseconds.
+        """
         return hours * 60 * 60 * 1000
+
+    @staticmethod
+    def _get_previous_time(current_time):
+        """
+        Calculates the previous time based on the current time.
+
+        Parameters
+        ----------
+        current_time : int
+            The current time in milliseconds.
+
+        Returns
+        -------
+        int
+            The calculated previous time in milliseconds.
+        """
+        return int((current_time - timedelta(hours=1000)).timestamp()) * 1000
