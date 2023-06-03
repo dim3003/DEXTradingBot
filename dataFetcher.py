@@ -67,7 +67,7 @@ class DataFetcher():
 
         """
         current_time = self.stop_time
-        previous_time = self._get_previous_time(current_time)
+        previous_time = current_time - self._get_milliseconds(1000)
 
         merged_df = pd.DataFrame()
         row_len = 1000  # initial row length
@@ -138,23 +138,6 @@ class DataFetcher():
         """
         return hours * 60 * 60 * 1000
 
-    @staticmethod
-    def _get_previous_time(current_time):
-        """
-        Calculates the previous time based on the current time.
-
-        Parameters
-        ----------
-        current_time : int
-            The current time in milliseconds.
-
-        Returns
-        -------
-        int
-            The calculated previous time in milliseconds.
-        """
-        return int((current_time - timedelta(hours=1000)).timestamp()) * 1000
-
 
 if __name__ == "__main__":
     # Load environment variables from the .env file
@@ -165,4 +148,6 @@ if __name__ == "__main__":
     API_SECRET = os.getenv('API_SECRET_BINANCE')
 
     data = DataFetcher(API_KEY, API_SECRET)
-    data.list_available_symbols("MAT")
+    # data.list_available_symbols("MAT")
+    data.symbol = "MATICUSDT"
+    data.fetch_price()
