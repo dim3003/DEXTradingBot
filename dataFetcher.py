@@ -4,13 +4,6 @@ from dotenv import load_dotenv
 from binance import Client
 from datetime import datetime, timedelta
 
-# Load environment variables from the .env file
-load_dotenv()
-
-# Retrieve the API key and secret from the environment variables
-API_KEY = os.getenv('API_KEY_BINANCE')
-API_SECRET = os.getenv('API_SECRET_BINANCE')
-
 
 class DataFetcher():
     """
@@ -30,7 +23,7 @@ class DataFetcher():
         The symbol for which to fetch data.
     """
 
-    def __init__(self, binance_api_key, binance_api_secret, start_time, stop_time=datetime.utcnow(), symbol="BTCUSDT"):
+    def __init__(self, binance_api_key, binance_api_secret, stop_time=datetime.utcnow(), symbol="BTCUSDT"):
         """
         Constructs all the necessary attributes for the data fetcher object.
 
@@ -40,8 +33,6 @@ class DataFetcher():
             The Binance API key.
         binance_api_secret : str
             The Binance API secret.
-        start_time : datetime.datetime
-            The start datetime for fetching data.
         stop_time : datetime.datetime, optional
             The stop datetime for fetching data (default is current UTC time).
         symbol : str, optional
@@ -49,7 +40,6 @@ class DataFetcher():
         """
         self.client = Client(binance_api_key, binance_api_secret)
         self.search_available_symbols = []
-        self.start_time = int(start_time.timestamp()) * 1000
         self.stop_time = int(stop_time.timestamp()) * 1000
         self.symbol = symbol
 
@@ -62,21 +52,19 @@ class DataFetcher():
         search_term : str
             The search term to use when looking for symbols.
         """
+        search_term = search_term.lower()
         data = self.client.get_all_tickers()
         self.search_available_symbols = [
             d['symbol'] for d in data if search_term in d['symbol'].lower()]
+        print(self.search_available_symbols)
 
-    def fetch_price(self, symbol):
+    def fetch_price(self):
         """
         Fetches the price data for the given symbol.
 
         The method fetches 1 hour klines (OHLCV) data, creates a DataFrame with this data, processes it and stores it as a pickle file. 
         The process is repeated in a loop until the number of rows in the fetched data falls below 990.
 
-        Parameters
-        ----------
-        symbol : str
-            The symbol for which to fetch price data.
         """
         current_time = self.stop_time
         previous_time = self._get_previous_time(current_time)
@@ -166,3 +154,15 @@ class DataFetcher():
             The calculated previous time in milliseconds.
         """
         return int((current_time - timedelta(hours=1000)).timestamp()) * 1000
+
+
+if __name__ == "__main__":
+    # Load environment variables from the .env file
+    load_dotenv()
+
+    # Retrieve the API key and secret from the environment variables
+    API_KEY = os.getenv('API_KEY_BINANCE')
+    API_SECRET = os.getenv('API_SECRET_BINANCE')
+
+    data = DataFetcher(API_KEY, API_SECRET)
+    data.list_available_symbols("MAT")
