@@ -6,13 +6,15 @@ import pandas as pd
 
 class TradingStrategy:
     def __init__(self, df, initial_cash=10000):
-        self.df = pd.to_numeric(df['close_price']).copy()
+        self.df = pd.DataFrame(pd.to_numeric(df['close_price']).copy())
         self.initial_cash = initial_cash
         self.cash = initial_cash
         self.previous_holdings = 0.0
         self.previous_order = None
-        self.df['holdings'] = 0.0
-        self.df['portfolio_value'] = 0.0
+        self.df.loc[:, 'holdings'] = 0.0
+        self.df.loc[:, 'portfolio_value'] = 0.0
+        self.df.loc[:, 'signal_buy_and_hold'] = 1
+        self.strategy_signal = 'signal_buy_and_hold'
 
     def calculate_RSI(self, lower_band=30, upper_band=70, lag=0):
         # Calculate RSI
@@ -26,18 +28,19 @@ class TradingStrategy:
         self.df.loc[(
             self.df[f'RSI_{lower_band}_{upper_band}_{lag}'] > 70), f'signal_RSI_{lower_band}_{upper_band}_{lag}'] = 1
 
-    def calculate_portfolio_value(self, strategy_signal):
+        self.strategy_signal = f'signal_RSI_{lower_band}_{upper_band}_{lag}'
 
+    def calculate_portfolio_value(self):
         # Go through each day
         for i in self.df.index:
             # At each 'Buy' signal, buy as much as you can
-            if self.df.at[i, strategy_signal] == 1 and self.previous_order != 1 and self.previous_holdings == 0:
+            if self.df.at[i, self.strategy_signal] == 1 and self.previous_order != 1 and self.previous_holdings == 0:
                 self.df.at[i, 'holdings'] = self.cash / \
                     self.df.at[i, 'close_price']
                 self.cash = 0  # use all cash to buy
 
             # At each 'Sell' signal, sell everything
-            elif self.df.at[i, strategy_signal] == -1:
+            elif self.df.at[i, self.strategy_signal] == -1:
                 self.cash += self.previous_holdings * \
                     self.df.at[i, 'close_price']
                 self.df.at[i, 'holdings'] = 0
@@ -54,19 +57,19 @@ class TradingStrategy:
             self.previous_holdings = self.df.at[i, 'holdings']
 
             # Update the previous order for next iteration
-            self.previous_order = self.df.at[i, strategy_signal]
+            self.previous_order = self.df.at[i, self.strategy_signal]
 
-    def print_stats(self, strategy_signal):
+    def print_stats(self):
         # Calculate final portfolio value
         final_portfolio_value = self.df['portfolio_value'].dropna(
         ).iloc[-1]
         profit = final_portfolio_value - self.initial_cash
 
         # Count the number of trades made
-        n_trades = (self.df[strategy_signal] != 0).sum()
+        n_trades = ((self.df[self.strategy_signal] != 0) & (
+            self.df[self.strategy_signal] != self.df[self.strategy_signal].shift(-1))).sum()
 
         # Calculate stats
-        print(self.df)
         print(f'Initial portfolio value: ${self.initial_cash:.2f}')
         print(f'Final portfolio value: ${final_portfolio_value:.2f}')
         print(f'Profit: ${profit:.2f}')
@@ -75,4 +78,7 @@ class TradingStrategy:
 
 if __name__ == "__main__":
     # Get the data
-    dfPrice = pd.read_pickle("MATICUSDT.pkl")
+    dfPrice = pd.read_pickle("data/MATICUSDT.pkl")
+    tradingAnalyzer = TradingStrategy(dfPrice)
+    tradingAnalyzer.calculate_portfolio_value()
+    tradingAnalyzer.print_stats()
