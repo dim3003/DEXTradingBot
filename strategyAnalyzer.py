@@ -1,7 +1,7 @@
 import ta
 import numpy as np
 import pandas as pd
-pd.set_option('display.max_rows', 500)
+#pd.set_option('display.max_rows', 500)
 
 # Get the data
 dfAll = pd.read_pickle("bitcoin_price.pkl")
