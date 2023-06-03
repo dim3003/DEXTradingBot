@@ -10,7 +10,7 @@ This project consists of three main modules:
 
 This module retrieves closing price data from Binance. With this data, users can analyze market trends, predict future price movements, and decide the most appropriate trading strategies.
 
-### 2. Strategy Analyzer (strategyAnalyzer.py)
+### 2. Strategy Analyzer (strategyAnalyzer.py)
 
 The Strategy Analyzer evaluates each trading strategy stored in a DataFrame. By comparing various trading strategies, it helps users understand their potential outcomes, risks, and rewards, thereby assisting them in choosing the most suitable trading strategies.
 
