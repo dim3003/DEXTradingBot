@@ -1,4 +1,5 @@
 import ta
+import datetime
 import numpy as np
 import pandas as pd
 #pd.set_option('display.max_rows', 500)
@@ -16,7 +17,7 @@ class TradingStrategy:
         self.df.loc[:, 'signal_buy_and_hold'] = 1
         self.strategy_signal = 'signal_buy_and_hold'
 
-    def calculate_RSI(self, lower_band=30, upper_band=70, lag=0):
+    def calculate_RSI(self, lower_band=30, upper_band=70, lag=14):
         # Calculate RSI
         self.df[f'RSI_{lower_band}_{upper_band}_{lag}'] = ta.momentum.rsi(
             self.df['close_price'], window=lag)
@@ -24,13 +25,35 @@ class TradingStrategy:
         self.df[f'signal_RSI_{lower_band}_{upper_band}_{lag}'] = 0
         # Generate trading signals based on RSI
         self.df.loc[(
-            self.df[f'RSI_{lower_band}_{upper_band}_{lag}'] < 30), f'signal_RSI_{lower_band}_{upper_band}_{lag}'] = -1
+            self.df[f'RSI_{lower_band}_{upper_band}_{lag}'] < lower_band), f'signal_RSI_{lower_band}_{upper_band}_{lag}'] = -1
         self.df.loc[(
-            self.df[f'RSI_{lower_band}_{upper_band}_{lag}'] > 70), f'signal_RSI_{lower_band}_{upper_band}_{lag}'] = 1
+            self.df[f'RSI_{lower_band}_{upper_band}_{lag}'] > upper_band), f'signal_RSI_{lower_band}_{upper_band}_{lag}'] = 1
 
         self.strategy_signal = f'signal_RSI_{lower_band}_{upper_band}_{lag}'
 
+    def calculate_inverse_RSI(self, lower_band=30, upper_band=70, lag=14):
+        # Calculate RSI
+        self.df[f'RSI_{lower_band}_{upper_band}_{lag}'] = ta.momentum.rsi(
+            self.df['close_price'], window=lag)
+        # Create empty "signals" column
+        self.df[f'inverse_signal_RSI_{lower_band}_{upper_band}_{lag}'] = 0
+        # Generate trading signals based on RSI
+        self.df.loc[(
+            self.df[f'RSI_{lower_band}_{upper_band}_{lag}'] < lower_band), f'inverse_signal_RSI_{lower_band}_{upper_band}_{lag}'] = 1
+        self.df.loc[(
+            self.df[f'RSI_{lower_band}_{upper_band}_{lag}'] > upper_band), f'inverse_signal_RSI_{lower_band}_{upper_band}_{lag}'] = -1
+
+        self.strategy_signal = f'inverse_signal_RSI_{lower_band}_{upper_band}_{lag}'
+
     def calculate_portfolio_value(self):
+
+        # reset parameters
+        self.cash = self.initial_cash
+        self.previous_holdings = 0.0
+        self.previous_order = None
+        self.df.loc[:, 'holdings'] = 0.0
+        self.df.loc[:, 'portfolio_value'] = 0.0
+
         # Go through each day
         for i in self.df.index:
             # At each 'Buy' signal, buy as much as you can
@@ -70,15 +93,25 @@ class TradingStrategy:
             self.df[self.strategy_signal] != self.df[self.strategy_signal].shift(-1))).sum()
 
         # Calculate stats
+        print(f'Strategy: {self.strategy_signal}')
+        print(40*'-')
+        print(
+            f'Start date: {datetime.datetime.fromtimestamp(self.df.index[0]/1000)}')
         print(f'Initial portfolio value: ${self.initial_cash:.2f}')
+        print(
+            f'Stop date: {datetime.datetime.fromtimestamp(self.df.index[-1]/1000)}')
         print(f'Final portfolio value: ${final_portfolio_value:.2f}')
+        print(f'ROI: {(final_portfolio_value/self.initial_cash)*100 - 100:.2f}%')
         print(f'Profit: ${profit:.2f}')
         print(f'Number of trades made: {n_trades}')
+        print(40*'-')
 
 
 if __name__ == "__main__":
     # Get the data
     dfPrice = pd.read_pickle("data/MATICUSDT.pkl")
+
     tradingAnalyzer = TradingStrategy(dfPrice)
+    tradingAnalyzer.calculate_RSI(lag=14)
     tradingAnalyzer.calculate_portfolio_value()
     tradingAnalyzer.print_stats()
